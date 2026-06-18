@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!--
+  base.html — Master layout with sidebar navigation.
+
+  Provides the app shell: sticky header, left sidebar with schedule
+  blocks and rules, and a main content area. Child templates fill
+  the `content` block.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Morpheus — Personal Life Tracking Application" />
+  <title>{% block title %}Morpheus{% endblock %}</title>
+
+  <!-- Google Fonts — Inter for clean, modern typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Application stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <!-- ─── Header ──────────────────────────────────────────────── -->
+  <header class="site-header">
+    <nav class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🌙</span>
+        <span class="logo-text">Morpheus</span>
+      </a>
+      <div class="nav-right">
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ─── App Shell (sidebar + content) ───────────────────────── -->
+  <div class="app-shell">
+
+    <!-- ─── Sidebar ─────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Schedule Blocks -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-heading">
+          <span class="sidebar-icon">📅</span> Schedule
+        </h3>
+        <ul class="sidebar-list">
+          {% for block in schedule_blocks %}
+          <li>
+            <a href="/log/schedule/{{ block.id }}"
+               class="sidebar-item {% if active_type == 'schedule' and active_id == block.id %}active{% endif %}"
+               id="sidebar-schedule-{{ block.id }}">
+              <span class="sidebar-item-name">{{ block.name }}</span>
+              <span class="sidebar-item-time">{{ block.start_time }} – {{ block.end_time }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Rules -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-heading">
+          <span class="sidebar-icon">✅</span> Rules
+        </h3>
+        <ul class="sidebar-list">
+          {% for rule in rules %}
+          <li>
+            <a href="/log/rule/{{ rule.id }}"
+               class="sidebar-item {% if active_type == 'rule' and active_id == rule.id %}active{% endif %}"
+               id="sidebar-rule-{{ rule.id }}">
+              <span class="sidebar-item-name">{{ rule.name }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </aside>
+
+    <!-- ─── Main Content ──────────────────────────────────────── -->
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- ─── Footer ──────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <p>&copy; 2026 Morpheus &middot; Personal Life Tracking</p>
+  </footer>
+
+  <!-- Inline script: display current date in nav -->
+  <script>
+    document.getElementById('nav-date').textContent =
+      new Date().toLocaleDateString('en-IN', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+  </script>
+</body>
+</html>

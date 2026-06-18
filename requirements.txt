@@ -1,0 +1,27 @@
+# ──────────────────────────────────────────────────────────────────
+#  Morpheus — Python Dependencies
+# ──────────────────────────────────────────────────────────────────
+#  Install with:  pip install -r requirements.txt
+# ──────────────────────────────────────────────────────────────────
+
+# Web framework
+fastapi>=0.115,<1.0
+
+# ASGI server
+uvicorn[standard]>=0.30,<1.0
+
+# Template engine (Jinja2 is pulled in by fastapi, pinned for clarity)
+jinja2>=3.1,<4.0
+
+# ORM & database
+sqlalchemy>=2.0,<3.0
+
+# Settings / .env loading
+pydantic-settings>=2.0,<3.0
+
+# Needed by pydantic-settings for .env file parsing
+python-dotenv>=1.0,<2.0
+
+# Form data parsing (required for FastAPI Form() parameters)
+python-multipart>=0.0.9
+

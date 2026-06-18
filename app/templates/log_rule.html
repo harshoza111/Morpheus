@@ -1,0 +1,72 @@
+<!--
+  log_rule.html — Rule logging form.
+  Shows rule name, status selector, notes, and save button.
+-->
+{% extends "base.html" %}
+
+{% set active_type = "rule" %}
+{% set active_id = rule.id %}
+
+{% block title %}Log — {{ rule.name }}{% endblock %}
+
+{% block content %}
+<div class="log-form-page">
+
+  <!-- Success toast -->
+  {% if saved %}
+  <div class="toast toast--success" id="save-toast">
+    <span class="toast-icon">✓</span>
+    Entry saved successfully!
+  </div>
+  {% endif %}
+
+  <!-- Form header -->
+  <div class="log-header">
+    <span class="log-type-badge log-type-badge--rule">Rule</span>
+    <h1 class="log-title">{{ rule.name }}</h1>
+  </div>
+
+  <!-- Log form -->
+  <form method="POST" action="/log/rule/{{ rule.id }}" class="log-form" id="log-rule-form">
+    <!-- Date -->
+    <div class="form-group">
+      <label for="entry_date" class="form-label">Date</label>
+      <input type="date" id="entry_date" name="entry_date"
+             value="{{ today }}" class="form-input" required />
+    </div>
+
+    <!-- Status selector -->
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <div class="status-selector">
+        <label class="status-option status-option--followed">
+          <input type="radio" name="status" value="followed" required />
+          <span class="status-option-label">
+            <span class="status-option-icon">✅</span>
+            Followed
+          </span>
+        </label>
+        <label class="status-option status-option--violated">
+          <input type="radio" name="status" value="violated" />
+          <span class="status-option-label">
+            <span class="status-option-icon">❌</span>
+            Violated
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="form-group">
+      <label for="content" class="form-label">Notes <span class="form-hint">(optional)</span></label>
+      <textarea id="content" name="content" class="form-textarea"
+                placeholder="Any notes about this rule today?" rows="4"></textarea>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" class="btn btn--primary" id="btn-save-rule">
+      <span class="btn-icon">💾</span> Save Entry
+    </button>
+  </form>
+</div>
+{% endblock %}
