@@ -22,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from app.config import get_settings
 from app.database import init_db, seed_defaults
 from app.database.engine import SessionLocal
-from app.routes import health, pages, reviews
+from app.routes import health, pages, reviews, sync
 
 # Ensure all ORM models are imported so Base.metadata knows about them
 import app.models  # noqa: F401
@@ -82,6 +82,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Enable CORS for cross-origin syncs from mobile devices
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --------------------------------------------------------------------------- #
 #  Static files                                                                #
 # --------------------------------------------------------------------------- #
@@ -99,3 +109,4 @@ app.mount(
 app.include_router(health.router)
 app.include_router(pages.router)
 app.include_router(reviews.router)
+app.include_router(sync.router)

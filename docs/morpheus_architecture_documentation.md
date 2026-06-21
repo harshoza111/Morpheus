@@ -1,88 +1,124 @@
-# 📓 Morpheus — Architecture & Design Documentation
+# 📓 Morpheus — Complete Architecture & Developer Onboarding Documentation
 
-Welcome to the **Morpheus** developer onboarding and architecture documentation. This document provides a complete guide to the project's codebase, data models, services, folder structures, and execution flows to enable any engineer to get started immediately without reading raw code.
+Welcome to **Morpheus**, an offline-first journal logging and productivity companion application. 
 
----
-
-## 🚀 1. Technology Stack
-
-Morpheus is built with a lightweight, local-first stack designed for quick response times and zero dependencies:
-
-- **Web Framework**: FastAPI (running on Uvicorn)
-- **Database Engine**: SQLite (local database file `morpheus.db`)
-- **Object-Relational Mapping (ORM)**: SQLAlchemy 2.0 (using type-annotated `Mapped` styles)
-- **Template Engine**: Jinja2 (server-rendered HTML pages mounted by FastAPI)
-- **Frontend / Styling**: Vanilla CSS (modern dark-theme layout with backdrop filters and custom cards)
-- **AI / LLM Integration**: Google Gemini 2.0 (`google-genai` SDK)
+This document serves as the master onboarding guide for new engineers. After reading this guide, you should be fully equipped to develop features, debug issues, compile the Android application, and manage the backend service without needing to comb through raw code.
 
 ---
 
-## 📂 2. Directory Structure
+## 🚀 1. System Overview & Core Concept
 
-The project has a clear separation of concerns, organized as follows:
+Morpheus helps users track daily schedule block execution and compliance with personal rules. It operates on a **local-first, companion-sync model**:
+1. **Offline Capture**: The user records natural language journal entries (e.g., *"I did jogging at 6 AM, followed sleep schedule, but missed morning routine"*) on their mobile device, even when disconnected.
+2. **Local DB Store**: Mobile logs are saved to a local SQLite database on the device.
+3. **Wi-Fi Sync**: When connected to the same local network as the user's laptop, logs are synced to the FastAPI server.
+4. **AI Classification & Parsing**: The backend server processes natural language log entries using an LLM (Gemini or OpenRouter), mapping sentences to specific schedules or rules and extracting individual activities.
+5. **AI Productivity Coach**: The backend periodically compiles stats and queries the LLM to generate structured daily, weekly, or monthly review coach assessments.
+
+---
+
+## 🛠️ 2. Technology Stack
+
+### Backend Service (Laptop/Server)
+*   **Web Framework**: FastAPI (running on Uvicorn)
+*   **Database Engine**: SQLite (local database file `morpheus.db`)
+*   **Object-Relational Mapping (ORM)**: SQLAlchemy 2.0 (using type-annotated `Mapped` style)
+*   **Template Engine**: Jinja2 (server-rendered templates for the web dashboard)
+*   **AI Integration**: 
+    *   **Google Gemini**: Unified `google-genai` SDK targeting `gemini-2.0-flash`.
+    *   **OpenRouter**: Synced HTTP completions client targeting `openai/gpt-oss-120b` (or other config models).
+
+### Companion App (Mobile)
+*   **Development Platform**: Native Android (Kotlin, Jetpack Compose)
+*   **Build System**: Gradle Kotlin DSL (`build.gradle.kts`) with Version Catalogs (`libs.versions.toml`)
+*   **Target SDK**: Compile SDK `36`, Target SDK `36`, Minimum SDK `24` (Android 7.0)
+*   **Database**: Custom Android SQLite Helper (`android.database.sqlite.SQLiteOpenHelper`)
+*   **Network Client**: Standard Java `HttpURLConnection` on `Dispatchers.IO` to ensure lightweight runtime overhead and high reliability over local networks.
+
+---
+
+## 📂 3. Directory Structure
 
 ```
 Morpheus/
-├── .env                         # Local configuration variables (ignored by git)
-├── .env.example                 # Example template for setting up env
-├── requirements.txt             # Python packages listing
-├── morpheus.db                  # SQLite database file (auto-generated)
-└── app/
-    ├── main.py                  # App entrypoint, mounts static files/templates, registers routes
-    ├── config/
-    │   └── settings.py          # Configuration loading & validation using pydantic-settings
-    ├── database/
-    │   ├── __init__.py
-    │   ├── base.py              # Declarative SQLAlchemy base
-    │   ├── engine.py            # SQLite engine configuration, get_db dependency, table creator
-    │   └── seed.py              # Default schedule blocks & rules seeding script (idempotent)
-    ├── models/                  # SQLAlchemy ORM schemas
-    │   ├── __init__.py          # Table registration imports
-    │   ├── schedule_block.py    # Target schedule blocks (e.g. Sleep, Deep Work)
-    │   ├── rule.py              # Predefined rules to check compliance
-    │   ├── log_entry.py         # User-logged events (schedule statuses & rule checks)
-    │   └── review_summary.py    # Cached AI-generated summary outputs
-    ├── routes/                  # Route handlers (FastAPI routers)
-    │   ├── health.py            # Healthcheck route (/health)
-    │   ├── pages.py             # User logging pages, dashboard page, and submission routes
-    │   └── reviews.py           # Review routes (/review/daily, /review/weekly, /review/monthly)
-    ├── services/                # Business logic engines
-    │   ├── __init__.py
-    │   ├── schedule_service.py  # Schedule CRUD
-    │   ├── rule_service.py      # Rule CRUD
-    │   ├── log_service.py       # LogEntry persistence & retrievals
-    │   ├── review_service.py    # Heavy date aggregation queries for reviews
-    │   ├── review_payload_builder.py # Serializes review data into an LLM payload
-    │   ├── ai_summary_service.py     # Cache checking, LLM payload orchestration, and caching
-    │   └── llm/                 # LLM provider packages
-    │       ├── __init__.py      # Provider Factory (lru_cached)
-    │       ├── llm_base.py      # Abstract Base Class (ABC) contract
-    │       └── gemini_provider.py # Gemini 2.0 concrete class using google-genai
-    ├── static/
-    │   └── css/
-    │       └── style.css        # Custom styles for dark layout, layout grid, tables, and AI cards
-    └── templates/               # Jinja2 layouts and pages
-        ├── base.html            # Main site layout (sidebar, header, content containers)
-        ├── dashboard.html       # Home page showing today's progress & logs list
-        ├── log_schedule.html    # Form to submit a schedule block log
-        ├── log_rule.html        # Form to submit a rule compliance check
-        ├── review_daily.html    # Daily stats and blocks cards
-        ├── review_weekly.html   # Weekly table aggregation with count pills
-        ├── review_monthly.html  # Monthly table aggregation
-        └── _ai_summary.html     # Reusable template partial showing Gemini summary responses
+├── requirements.txt                 # Python dependencies
+├── morpheus.db                      # Local SQLite file (generated at startup)
+├── .env                             # Environment configuration (ignored by git)
+├── .env.example                     # Reference template for configuration
+├── app/                             # Backend source folder
+│   ├── main.py                      # Application entrypoint & startup routing
+│   ├── config/
+│   │   └── settings.py              # Pydantic Settings validation
+│   ├── database/
+│   │   ├── base.py                  # Declarative SQLAlchemy base class
+│   │   ├── engine.py                # Connection pool & DB initialization helper
+│   │   └── seed.py                  # Initial schedule blocks & rules seeding logic
+│   ├── models/                      # SQLAlchemy ORM Models
+│   │   ├── schedule_block.py        # Loggable schedule blocks (Sleep, Deep Work, etc.)
+│   │   ├── rule.py                  # Loggable compliance rules (No Social Media, etc.)
+│   │   ├── raw_log.py               # Raw logs captured offline on mobile
+│   │   ├── log_entry.py             # Parsed, structured log entries
+│   │   ├── activity.py              # Granular activities extracted from logs
+│   │   └── review_summary.py        # Cached AI coach review documents
+│   ├── routes/                      # API and Web endpoints
+│   │   ├── health.py                # Health checks
+│   │   ├── sync.py                  # Sync endpoint from mobile (/sync)
+│   │   ├── pages.py                 # HTML Dashboard and Form submissions
+│   │   └── reviews.py               # Daily/Weekly/Monthly AI review pages
+│   ├── services/                    # Business Logic Layer
+│   │   ├── log_service.py           # Log database CRUD operations
+│   │   ├── review_service.py        # Date-range statistics aggregation
+│   │   ├── review_payload_builder.py # Formatting statistics for LLM prompts
+│   │   ├── ai_summary_service.py     # AI analysis caching and orchestrator
+│   │   ├── classification_service.py # Core LLM classification orchestrator
+│   │   └── llm/                     # LLM Provider Layer
+│   │       ├── llm_base.py          # Abstract provider base class
+│   │       ├── gemini_provider.py   # Concrete Gemini integration
+│   │       └── openrouter_provider.py # Concrete OpenRouter integration
+│   ├── static/css/style.css         # Dark theme style sheet
+│   └── templates/                   # Server-rendered Jinja2 HTML files
+│
+└── morpheus-capture/                # Android Companion App
+    ├── build.gradle.kts             # Project root build script
+    ├── settings.gradle.kts          # Gradle build and repository settings
+    ├── gradle/libs.versions.toml    # Android version management catalog
+    └── app/                         # App module source folder
+        ├── build.gradle.kts         # Android compiler configuration
+        └── src/main/
+            ├── AndroidManifest.xml  # Cleartext network permissions & settings
+            └── java/com/example/morpheuscapture/
+                ├── MainActivity.kt  # Root Activity entrypoint
+                ├── Navigation.kt    # Composition destination router
+                ├── NavigationKeys.kt# Screen destination identifiers
+                ├── theme/           # Compose neon-dark theme colors
+                ├── data/            # Local data access models
+                │   ├── LogItem.kt   # Local log data representation class
+                │   ├── DatabaseHelper.kt # SQLite table manager
+                │   └── DataRepository.kt # Offline storage & HTTP client
+                └── ui/main/         # Presentation Layer
+                    ├── MainScreen.kt# Tabs (Capture & Sync) layouts
+                    └── MainScreenViewModel.kt # Composable UI state controller
 ```
 
 ---
 
-## 🗄️ 3. Database Schema
+## 🗄️ 4. Database Architecture & Schema
 
-The SQLite schema consists of four tables. It is automatically initialized and seeded by calling `init_db()` and `seed_defaults()` in the application startup hooks.
+The backend uses a local SQLite database containing six related tables. It initializes automatically on application startup.
 
 ```mermaid
 erDiagram
+    raw_logs ||--o{ log_entries : "classified into"
     schedule_blocks ||--o{ log_entries : "logged under"
     rules ||--o{ log_entries : "logged under"
+    log_entries ||--o{ activities : "contains"
     
+    raw_logs {
+        int id PK
+        text content
+        date entry_date
+        datetime created_at
+    }
     schedule_blocks {
         int id PK
         string name
@@ -97,26 +133,36 @@ erDiagram
     }
     log_entries {
         int id PK
+        int raw_log_id FK
         string entry_type "('schedule' | 'rule')"
         int reference_id "(FK schedule_blocks.id OR rules.id)"
         string status "('completed' | 'partial' | 'missed' | 'followed' | 'violated')"
-        text content "(optional user text/notes)"
-        date entry_date "(explicit target date of activity)"
-        datetime created_at "(automatic creation timestamp)"
+        text content
+        date entry_date
+        datetime created_at
+    }
+    activities {
+        int id PK
+        int log_entry_id FK
+        string name
+        datetime created_at
     }
     review_summaries {
         int id PK
         string review_type "('daily' | 'weekly' | 'monthly')"
         string review_key "('YYYY-MM-DD' | 'YYYY-Www' | 'YYYY-MM')"
-        text summary_json "(JSON string of AI response)"
-        datetime created_at "(creation timestamp)"
+        text summary_json
+        datetime created_at
     }
 ```
 
-### Table Definitions
+### Table Definitions & Seeding defaults
 
-#### A. `schedule_blocks`
-Defines target time intervals for tracking. Seeded defaults include:
+#### 1. `raw_logs`
+Stores the raw, unprocessed strings submitted by the user. Logs arriving from mobile are saved here before passing to the AI pipeline.
+
+#### 2. `schedule_blocks`
+Predefined daily schedule intervals. Defaults include:
 1. **Sleep** (10:00 PM - 6:00 AM)
 2. **Jogging** (6:00 AM - 6:30 AM)
 3. **Morning Routine** (6:30 AM - 7:00 AM)
@@ -130,90 +176,160 @@ Defines target time intervals for tracking. Seeded defaults include:
 11. **Evening Routine** (6:00 PM - 8:00 PM)
 12. **Night Study** (8:00 PM - 10:00 PM)
 
-#### B. `rules`
-Rules that the user evaluates compliance against:
+#### 3. `rules`
+Daily rules to evaluate compliance against:
 1. **No Social Media**
 2. **Study time >= 4 hours**
 3. **Deep Work >= 2 hours**
 
-#### C. `log_entries`
-Stores individual log submissions. 
-* ⚠️ **CRITICAL ASSUMPTION**: We filter and calculate reviews strictly using `entry_date` (the day the activity belongs to), *never* `created_at` (when it was typed). This allows users to back-log entries for the previous day.
+#### 4. `log_entries`
+The structured output from LLM log parsing. Linkages relate this entry back to the source schedule block/rule and the source `raw_logs` row.
+> [!IMPORTANT]
+> Morpheus queries and evaluates reviews strictly using `entry_date` (the calendar date the log represents) rather than `created_at`. This supports retroactive journaling for previous days.
 
-#### D. `review_summaries`
-A cache store for AI-generated review summaries. Has a unique constraint on `(review_type, review_key)` so that Gemini is called only once per period.
+#### 5. `activities`
+Granular task items extracted by the LLM from schedule blocks (e.g., parsing *"I did Jogging at 6 AM"* extracts *"Jogging at 6 AM"* as an activity name).
 
----
-
-## ⚙️ 4. Backend Services & Logic
-
-### A. Review Calculation (`app/services/review_service.py`)
-Provides a core function `build_review(db, start_date, end_date)`.
-- Fetches all schedule blocks and rules.
-- Queries `log_entries` within the date range.
-- Groups entries by `reference_id` (handling duplicate logs for the same block by selecting the most recent entry).
-- Computes aggregate counts:
-  - **Schedule Blocks**: counts of completed, partial, missed, and unlogged occurrences.
-  - **Rules**: counts of followed, violated, and unlogged occurrences.
-- Returns a structured `ReviewResult` dataclass.
-
-### B. LLM Abstraction Layer (`app/services/llm/`)
-Designed to switch providers seamlessly.
-- [LLMProvider](file:///d:/PlayGround/Morpheus/app/services/llm/llm_base.py) defines the contract: `analyze_review(self, payload: dict) -> dict | None`
-- [GeminiProvider](file:///d:/PlayGround/Morpheus/app/services/llm/gemini_provider.py) implements it using the unified `google-genai` SDK and the model `gemini-2.0-flash`.
-- Uses Gemini's `response_schema` parameter with a Pydantic model (`ReviewAnalysis`) to enforce the exact JSON format returned.
-- A factory method `get_llm_provider()` is used to resolve the provider. It returns `None` if `GEMINI_API_KEY` is not found, enabling graceful fallback degradation.
-
-### C. AI Summary Orchestrator (`app/services/ai_summary_service.py`)
-- First queries the `review_summaries` cache table.
-- If cache hits, deserializes `summary_json` and returns it immediately.
-- If cache misses, uses `review_payload_builder` to format the data, requests analysis from the LLM provider, saves the response to SQLite, and returns it.
-- If there is zero data logged for that period, it skips calling the API entirely to prevent empty summaries.
+#### 6. `review_summaries`
+Maintains a cache of AI review analysis JSON objects. A unique constraint on `(review_type, review_key)` ensures AI is not repeatedly called for the same period.
 
 ---
 
-## 🎨 5. Frontend & CSS Architecture
+## ⚙️ 5. Backend Execution Flows & API
 
-### Shell layout (`templates/base.html`)
-Presents a standard app layout with a sticky header showing the app logo, current local date, a responsive left sidebar containing direct links to:
-- **Logging forms** (individual blocks and rules)
-- **Reviews** (Daily, Weekly, Monthly views)
+### A. Mobile Log Synchronization Flow (`POST /sync`)
+The mobile application synchronizes its capture history using the JSON endpoint `/sync`.
 
-### Stylesheet System (`static/css/style.css`)
-- Styled using a **dark-mode first** theme:
-  - Primary Background (`--color-bg`): HSL dark slate blue.
-  - Cards & Sidebars (`--color-surface`): Elevated dark grey.
-  - Accent Color (`--gradient-accent`): Warm amber-to-rose gradient.
-- Semantic feedback borders/badge colors (success green, danger red, info blue, purple accent).
-- Responsive breakdown using media queries for smaller devices.
+```mermaid
+sequenceDiagram
+    participant Mobile as Android App
+    participant Route as routes/sync.py
+    participant DB as SQLite DB
+    participant AI as ClassificationService
+    participant Provider as LLMProvider
 
-### AI summary card layout (`templates/_ai_summary.html`)
-If `ai_summary` context exists, it renders a glassmorphic container with:
-- Top border purple accent gradient.
-- Overall coach's assessment box.
-- A responsive grid listing **Successes**, **Missed Opportunities**, **Patterns**, and **Recommendations** in color-coded cards.
+    Mobile->>Route: POST /sync {logs: [{id, text, created_at}]}
+    loop For each Log
+        Route->>DB: Save in raw_logs (returns raw_log.id)
+        Route->>AI: classify(text, db)
+        AI->>Provider: classify_log(text, blocks, rules)
+        Provider-->>AI: return parsed JSON list
+        AI-->>Route: return List[ClassifiedEntry]
+        loop For each ClassifiedEntry
+            Route->>DB: Resolve block/rule IDs (ilike case-insensitive)
+            Route->>DB: Insert into log_entries
+            Route->>DB: Insert granular activities into activities
+        end
+    end
+    Route-->>Mobile: return {"success": true, "received": count}
+```
+
+### B. AI Review Analysis Flow
+When the user visits a review page (Daily/Weekly/Monthly):
+1. **Aggregation**: `review_service.py` runs queries to compile completed, partial, missed, followed, and violated counts.
+2. **Cache Check**: `ai_summary_service.py` queries `review_summaries` using a calculated period key (e.g. `2026-06-21`, `2026-W25`, or `2026-06`).
+    * **Cache Hit**: Instantly deserializes the JSON string and renders the summary view.
+    * **Cache Miss**: Serializes the period statistics, builds an LLM prompt, requests structured JSON from the active `LLMProvider`, caches it in the database, and renders it.
+3. **Empty Graceful Fallback**: If the statistics show no activities were logged in the period, the LLM call is bypassed and a default card is displayed, saving API costs and avoiding errors.
 
 ---
 
-## 🛠️ 6. Setup & Developer Quickstart
+## 🤖 6. LLM Provider Layer & Error Robustness
 
-To run this application locally:
+Morpheus abstracts LLM providers under the contract interface `LLMProvider` located in `app/services/llm/llm_base.py`.
 
-1. **Activate virtual environment**:
-   ```bash
-   venv\Scripts\activate
-   ```
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Configure environment settings**:
-   Copy `.env.example` to `.env` and fill in your details:
-   ```env
-   GEMINI_API_KEY=AIzaSy... (Must be a personal Gmail key, Workspace keys with 0 limits fail)
-   ```
-4. **Start the server**:
-   ```bash
-   venv\Scripts\uvicorn.exe app.main:app --host 127.0.0.1 --port 8000 --reload
-   ```
-5. Navigate to `http://127.0.0.1:8000` in your web browser. Database tables and seed values will initialize automatically on startup.
+### A. Gemini Provider (`gemini_provider.py`)
+Uses the unified `google-genai` SDK and structured schemas:
+*   Enforces structure output parameters (`response_schema=ClassificationResult` / `response_schema=ReviewAnalysis`).
+*   Ensures 100% compliant JSON responses directly from the Gemini API.
+
+### B. OpenRouter Provider (`openrouter_provider.py`)
+Uses `httpx.post` to communicate with OpenRouter's completions endpoint:
+*   Configured Model: `openai/gpt-oss-120b`.
+*   Includes fallback text cleaning (`_parse_json_content`) to remove markdown fences (e.g., ` ```json ` wrapper) and trailing commas generated by models that fail strict JSON mode constraints.
+
+### C. JSON Parsing Safety & DB Session Protection
+> [!WARNING]
+> LLM providers are prone to intermittent network drops, rate limits, or HTML gateway timeouts (502 / 504 errors). If the raw API response is HTML instead of JSON, calls to `response.json()` will throw errors.
+*   Both providers execute `response.json()` inside `try-except` blocks.
+*   If JSON decoding fails, they log the raw HTTP status code and response body (HTML/error text) to the console and return `None` safely.
+*   This protects the FastAPI route handler from throwing unhandled exceptions, meaning that the parent transaction is committed successfully. Even if an LLM classification fails, the raw log is preserved in the database for later processing.
+
+---
+
+## 📱 7. Android App Architecture (`morpheus-capture`)
+
+The native companion application is a lightweight, local-first Compose application.
+
+### A. Offline Storage Layer
+*   **DatabaseHelper.kt**: Creates a local SQLite database `morpheus_capture.db` with a table `logs`:
+    ```sql
+    CREATE TABLE logs (
+        id TEXT PRIMARY KEY,
+        text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        synced INTEGER DEFAULT 0
+    )
+    ```
+*   **DataRepository.kt**: Handles logging CRUD:
+    *   Saves logs offline and updates state flows (`allLogs`, `unsyncedCount`).
+    *   `syncLogs(serverUrl)`: Collects unsynced logs, constructs a `POST /sync` request on `Dispatchers.IO` using a standard `HttpURLConnection`, parses response confirmation, and marks local records as synced (`synced = 1`) on success.
+    *   **Generous Timeouts**: Connection timeout is set to **15,000ms** and Read timeout to **60,000ms** to ensure slow Wi-Fi connections or long LLM classification processing times on the laptop do not terminate the sync prematurely.
+
+### B. Presentation & Theme Layer
+*   **MVVM ViewModels**: `MainScreenViewModel.kt` handles input state, tags, UI history updates, and sync actions.
+*   **Theme Layout**: Configured with a premium dark neon theme:
+    *   Primary Color: Charcoal-slate dark surface.
+    *   Accent Colors: Neon purple and neon cyan buttons/borders.
+*   **Compose MainScreen.kt**: Employs a dual-tab screen:
+    1.  **Capture Tab**: Text inputs, suggestion chips for quick template tagging (e.g., *Jogging*, *Deep Work*, *Routine*), and a scrolling card list of logged history showing colored badge sync statuses (Synced/Local).
+    2.  **Sync Tab**: URL input field (saved persistently using Android's `SharedPreferences`), validation warnings, progress indicator, and the sync action trigger.
+
+---
+
+## 🛠️ 8. Developer Quickstart & Compilation
+
+Follow these steps to run and compile both parts of the project:
+
+### Backend Development Startup
+
+1.  **Setup Virtual Environment**:
+    ```powershell
+    python -m venv venv
+    .\venv\Scripts\Activate.ps1
+    ```
+2.  **Install dependencies**:
+    ```powershell
+    pip install -r requirements.txt
+    ```
+3.  **Setup Environment Variables**:
+    Create a file named `.env` in the project root:
+    ```env
+    APP_NAME=Morpheus
+    DEBUG=True
+    LLM_PROVIDER="openrouter"
+    OPENROUTER_API_KEY="your-openrouter-key"
+    OPENROUTER_MODEL="openai/gpt-oss-120b"
+    GEMINI_API_KEY="your-gemini-key"
+    ```
+4.  **Run backend**:
+    ```powershell
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ```
+    *Open `http://localhost:8000` in your browser. The database seeds are initialized automatically.*
+
+### Android App Compilation
+
+To compile a debug APK on your machine:
+1.  Verify you have JDK installed (e.g., JDK 26.0.1 or JDK 17).
+2.  Navigate to the Android project folder:
+    ```powershell
+    cd morpheus-capture
+    ```
+3.  Run the Gradle build command:
+    ```powershell
+    .\gradlew.bat assembleDebug
+    ```
+4.  The compiled APK will be output at:
+    `morpheus-capture\app\build\outputs\apk\debug\app-debug.apk`
+5.  Transfer and install `app-debug.apk` onto your phone. Connect your phone to the same local Wi-Fi, open the sync settings tab in the app, type in the server URL (e.g., `http://192.168.x.x:8000`), and trigger your first synchronization sync!

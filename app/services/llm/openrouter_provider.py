@@ -31,6 +31,20 @@ class OpenRouterProvider(LLMProvider):
             "HTTP-Referer": "https://github.com/harshoza111/Morpheus",
             "X-Title": "Morpheus AI Assistant",
         }
+    def _parse_json_content(self, content: str) -> any:
+        import re
+        content_str = content.strip()
+        if content_str.startswith("```"):
+            lines = content_str.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            content_str = "\n".join(lines).strip()
+        
+        # Clean trailing commas (e.g. [1, 2, ] -> [1, 2] or {"a": 1, } -> {"a": 1})
+        content_str = re.sub(r',\s*([\}\]])', r'\1', content_str)
+        return json.loads(content_str)
 
     def analyze_review(self, payload: dict) -> dict | None:
         """
@@ -74,11 +88,30 @@ Ensure all keys are present. Keep list items short and action-oriented."""
             )
             response.raise_for_status()
             
-            res_data = response.json()
-            content = res_data["choices"][0]["message"]["content"]
+            try:
+                res_data = response.json()
+            except Exception as e:
+                logger.error(
+                    "OpenRouter JSON decode failed. Status code: %d. Response content: %s",
+                    response.status_code,
+                    response.text
+                )
+                return None
+            
+            if "choices" in res_data and len(res_data["choices"]) > 0:
+                message = res_data["choices"][0].get("message", {})
+                content = message.get("content")
+            else:
+                logger.error("OpenRouter unexpected response structure: %s", res_data)
+                return None
+
+            if not content:
+                logger.error("OpenRouter message content is empty or None: %s", res_data)
+                return None
+
             logger.debug("OpenRouter Review Output: %s", content)
 
-            parsed = json.loads(content.strip())
+            parsed = self._parse_json_content(content)
             # Basic validation
             required_keys = ["overall_assessment", "successes", "missed_opportunities", "patterns", "recommendations"]
             if all(k in parsed for k in required_keys):
@@ -87,8 +120,17 @@ Ensure all keys are present. Keep list items short and action-oriented."""
             logger.warning("OpenRouter JSON missing required review keys: %s", parsed)
             return None
 
-        except Exception:
-            logger.exception("OpenRouter analyze_review call failed")
+        except Exception as e:
+            response_text = None
+            status_code = None
+            if 'response' in locals():
+                response_text = response.text
+                status_code = response.status_code
+            logger.exception(
+                "OpenRouter analyze_review call failed. Status: %s, Response text: %r",
+                status_code,
+                response_text
+            )
             return None
 
     def classify_log(
@@ -153,11 +195,30 @@ Example Output:
             )
             response.raise_for_status()
 
-            res_data = response.json()
-            content = res_data["choices"][0]["message"]["content"]
+            try:
+                res_data = response.json()
+            except Exception as e:
+                logger.error(
+                    "OpenRouter JSON decode failed. Status code: %d. Response content: %s",
+                    response.status_code,
+                    response.text
+                )
+                return None
+
+            if "choices" in res_data and len(res_data["choices"]) > 0:
+                message = res_data["choices"][0].get("message", {})
+                content = message.get("content")
+            else:
+                logger.error("OpenRouter unexpected response structure: %s", res_data)
+                return None
+
+            if not content:
+                logger.error("OpenRouter message content is empty or None: %s", res_data)
+                return None
+
             logger.debug("OpenRouter Classify Output: %s", content)
 
-            parsed = json.loads(content.strip())
+            parsed = self._parse_json_content(content)
             if "entries" in parsed and isinstance(parsed["entries"], list):
                 return parsed["entries"]
 
@@ -168,6 +229,15 @@ Example Output:
             logger.warning("OpenRouter classification JSON missing 'entries' key: %s", parsed)
             return None
 
-        except Exception:
-            logger.exception("OpenRouter classify_log call failed")
+        except Exception as e:
+            response_text = None
+            status_code = None
+            if 'response' in locals():
+                response_text = response.text
+                status_code = response.status_code
+            logger.exception(
+                "OpenRouter classify_log call failed. Status: %s, Response text: %r",
+                status_code,
+                response_text
+            )
             return None
