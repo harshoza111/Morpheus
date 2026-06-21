@@ -1,98 +1,28 @@
-<!--
-  index.html — Dashboard homepage.
-  Shows today's progress stats and recent log entries.
--->
 {% extends "base.html" %}
 
-{% block title %}{{ app_name }} — Dashboard{% endblock %}
+{% block title %}Morpheus — Capture{% endblock %}
 
 {% block content %}
-<div class="dashboard">
-
-  <!-- ─── Today's Progress ──────────────────────────────────── -->
-  <section class="progress-section">
-    <h1 class="page-title">Today's Progress</h1>
-    <p class="page-subtitle">{{ today.strftime('%A, %B %d, %Y') }}</p>
-
-    <div class="stats-grid">
-      <!-- Schedule stat -->
-      <div class="stat-card stat-schedule">
-        <div class="stat-icon">📅</div>
-        <div class="stat-body">
-          <div class="stat-number">{{ schedule_count }} / {{ total_blocks }}</div>
-          <div class="stat-label">Schedule Logs Today</div>
-        </div>
-        <div class="stat-bar">
-          <div class="stat-bar-fill"
-               style="width: {{ (schedule_count / total_blocks * 100) if total_blocks > 0 else 0 }}%">
-          </div>
-        </div>
-      </div>
-
-      <!-- Rule stat -->
-      <div class="stat-card stat-rule">
-        <div class="stat-icon">✅</div>
-        <div class="stat-body">
-          <div class="stat-number">{{ rule_count }} / {{ total_rules }}</div>
-          <div class="stat-label">Rule Logs Today</div>
-        </div>
-        <div class="stat-bar">
-          <div class="stat-bar-fill stat-bar-fill--rule"
-               style="width: {{ (rule_count / total_rules * 100) if total_rules > 0 else 0 }}%">
-          </div>
-        </div>
-      </div>
+<div class="quick-capture-container">
+  <div class="quick-capture-header">
+    <h1 class="capture-title">Morpheus</h1>
+    <p class="capture-subtitle">What happened?</p>
+  </div>
+  
+  <form action="/log" method="post" class="capture-form">
+    <textarea 
+      name="content" 
+      class="capture-textarea" 
+      placeholder="Solved 2 Leetcode problems. Read CLRS chapter 5." 
+      required 
+      autofocus
+    ></textarea>
+    
+    <div class="capture-actions">
+      <button type="submit" class="btn btn--primary btn-log">
+        <span class="btn-icon">📝</span> Log
+      </button>
     </div>
-  </section>
-
-  <!-- ─── Recent Entries ────────────────────────────────────── -->
-  <section class="recent-section">
-    <h2 class="section-title">Recent Entries</h2>
-
-    {% if recent_entries %}
-    <div class="entries-list">
-      {% for entry in recent_entries %}
-      <div class="entry-card">
-        <div class="entry-header">
-          <!-- Type badge -->
-          <span class="entry-type-badge entry-type-badge--{{ entry.entry_type }}">
-            {{ entry.entry_type | capitalize }}
-          </span>
-
-          <!-- Name -->
-          <span class="entry-name">
-            {% if entry.entry_type == 'schedule' and entry.reference_id in block_map %}
-              {{ block_map[entry.reference_id].name }}
-            {% elif entry.entry_type == 'rule' and entry.reference_id in rule_map %}
-              {{ rule_map[entry.reference_id].name }}
-            {% else %}
-              #{{ entry.reference_id }}
-            {% endif %}
-          </span>
-
-          <!-- Status pill -->
-          <span class="status-pill status-pill--{{ entry.status }}">
-            {{ entry.status | capitalize }}
-          </span>
-        </div>
-
-        {% if entry.content %}
-        <p class="entry-content">{{ entry.content }}</p>
-        {% endif %}
-
-        <div class="entry-meta">
-          <span>{{ entry.entry_date.strftime('%b %d, %Y') }}</span>
-          <span>{{ entry.created_at.strftime('%I:%M %p') }}</span>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state">
-      <div class="empty-icon">📝</div>
-      <p>No entries yet. Click a schedule block or rule in the sidebar to start logging.</p>
-    </div>
-    {% endif %}
-  </section>
+  </form>
 </div>
 {% endblock %}

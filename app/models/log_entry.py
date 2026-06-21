@@ -16,8 +16,8 @@ Fields:
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Date, DateTime, Integer, String, Text, func, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 
@@ -29,8 +29,16 @@ class LogEntry(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
+    # Link to raw log
+    raw_log_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("raw_logs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # "schedule" or "rule"
     entry_type: Mapped[str] = mapped_column(String(20), nullable=False)
+
 
     # Points to schedule_blocks.id or rules.id depending on entry_type
     reference_id: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -50,8 +58,16 @@ class LogEntry(Base):
         DateTime, nullable=False, server_default=func.now()
     )
 
+    # Relationships
+    activities_list: Mapped[list["Activity"]] = relationship(
+        "Activity",
+        back_populates="log_entry",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return (
             f"<LogEntry {self.entry_type}:{self.reference_id} "
             f"status={self.status} date={self.entry_date}>"
         )
+

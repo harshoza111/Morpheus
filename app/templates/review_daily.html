@@ -1,0 +1,146 @@
+<!--
+  review_daily.html — Daily review page.
+  Shows all schedule block + rule logs for a selected date with statistics.
+-->
+{% extends "base.html" %}
+
+{% set active_type = "review" %}
+{% set active_id = "daily" %}
+
+{% block title %}Daily Review — {{ target_date.strftime('%b %d, %Y') }}{% endblock %}
+
+{% block content %}
+<div class="review-page">
+
+  <!-- ─── Reviews Navigation Tabs ────────────────────────────── -->
+  <div class="reviews-navigation-tabs">
+    <a href="/review/daily" class="review-tab-btn {% if active_id == 'daily' %}active{% endif %}">Daily</a>
+    <a href="/review/weekly" class="review-tab-btn {% if active_id == 'weekly' %}active{% endif %}">Weekly</a>
+    <a href="/review/monthly" class="review-tab-btn {% if active_id == 'monthly' %}active{% endif %}">Monthly</a>
+  </div>
+
+  <!-- ─── Date Picker ─────────────────────────────────────────── -->
+  <div class="review-header">
+
+    <div class="review-header-top">
+      <span class="log-type-badge log-type-badge--review">📊 Daily Review</span>
+    </div>
+    <h1 class="page-title">Daily Review</h1>
+    <form method="GET" action="/review/daily" class="date-picker-form" id="daily-review-form">
+      <div class="date-picker-row">
+        <input type="date" name="date" value="{{ target_date }}"
+               class="form-input date-picker-input" id="review-date" />
+        <button type="submit" class="btn btn--primary btn--sm" id="btn-view-daily">
+          View
+        </button>
+      </div>
+    </form>
+    <p class="review-date-label">{{ target_date.strftime('%A, %B %d, %Y') }}</p>
+  </div>
+
+  <!-- ─── Daily Statistics ────────────────────────────────────── -->
+  <section class="review-stats-section">
+    <h2 class="section-title">Statistics</h2>
+    <div class="review-stats-grid">
+      <!-- Schedule stats -->
+      <div class="review-stat-group">
+        <h3 class="review-stat-group-title">📅 Schedule</h3>
+        <div class="review-stat-items">
+          <div class="review-stat-item">
+            <span class="review-stat-value">{{ review.schedule_stats.total_logged }}</span>
+            <span class="review-stat-label">Total Logged</span>
+          </div>
+          <div class="review-stat-item review-stat-item--completed">
+            <span class="review-stat-value">{{ review.schedule_stats.completed }}</span>
+            <span class="review-stat-label">Completed</span>
+          </div>
+          <div class="review-stat-item review-stat-item--partial">
+            <span class="review-stat-value">{{ review.schedule_stats.partial }}</span>
+            <span class="review-stat-label">Partial</span>
+          </div>
+          <div class="review-stat-item review-stat-item--missed">
+            <span class="review-stat-value">{{ review.schedule_stats.missed }}</span>
+            <span class="review-stat-label">Missed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rule stats -->
+      <div class="review-stat-group">
+        <h3 class="review-stat-group-title">✅ Rules</h3>
+        <div class="review-stat-items">
+          <div class="review-stat-item">
+            <span class="review-stat-value">{{ review.rule_stats.total_logged }}</span>
+            <span class="review-stat-label">Total Logged</span>
+          </div>
+          <div class="review-stat-item review-stat-item--completed">
+            <span class="review-stat-value">{{ review.rule_stats.followed }}</span>
+            <span class="review-stat-label">Followed</span>
+          </div>
+          <div class="review-stat-item review-stat-item--missed">
+            <span class="review-stat-value">{{ review.rule_stats.violated }}</span>
+            <span class="review-stat-label">Violated</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Schedule Review ─────────────────────────────────────── -->
+  <section class="review-section">
+    <h2 class="section-title">Schedule Blocks</h2>
+    <div class="review-cards">
+      {% for sr in review.schedule_reviews %}
+      <div class="review-card {% if sr.status %}review-card--logged{% endif %}">
+        <div class="review-card-header">
+          <div class="review-card-info">
+            <span class="review-card-name">{{ sr.block.name }}</span>
+            <span class="review-card-time">{{ sr.block.start_time }} – {{ sr.block.end_time }}</span>
+          </div>
+          {% if sr.status %}
+          <span class="status-pill status-pill--{{ sr.status }}">{{ sr.status | capitalize }}</span>
+          {% else %}
+          <span class="status-pill status-pill--none">Not Logged</span>
+          {% endif %}
+        </div>
+        {% if sr.content %}
+        <div class="review-card-notes">
+          <span class="review-card-notes-label">Notes:</span>
+          <p>{{ sr.content }}</p>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ─── Rule Review ─────────────────────────────────────────── -->
+  <section class="review-section">
+    <h2 class="section-title">Rules</h2>
+    <div class="review-cards">
+      {% for rr in review.rule_reviews %}
+      <div class="review-card {% if rr.status %}review-card--logged{% endif %}">
+        <div class="review-card-header">
+          <span class="review-card-name">{{ rr.rule.name }}</span>
+          {% if rr.status %}
+          <span class="status-pill status-pill--{{ rr.status }}">{{ rr.status | capitalize }}</span>
+          {% else %}
+          <span class="status-pill status-pill--none">Not Logged</span>
+          {% endif %}
+        </div>
+        {% if rr.content %}
+        <div class="review-card-notes">
+          <span class="review-card-notes-label">Notes:</span>
+          <p>{{ rr.content }}</p>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ─── AI Summary ──────────────────────────────────────────── -->
+  {% include "_ai_summary.html" %}
+
+</div>
+{% endblock %}

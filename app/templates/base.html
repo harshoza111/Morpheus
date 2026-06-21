@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <!--
-  base.html — Master layout with sidebar navigation.
-
-  Provides the app shell: sticky header, left sidebar with schedule
-  blocks and rules, and a main content area. Child templates fill
-  the `content` block.
+  base.html — Master layout with collapsible sidebar navigation.
 -->
 <html lang="en">
 <head>
@@ -28,10 +24,15 @@
   <!-- ─── Header ──────────────────────────────────────────────── -->
   <header class="site-header">
     <nav class="nav-container">
-      <a href="/" class="nav-logo">
-        <span class="logo-icon">🌙</span>
-        <span class="logo-text">Morpheus</span>
-      </a>
+      <div class="nav-left-group">
+        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="Toggle Sidebar">
+          ☰
+        </button>
+        <a href="/" class="nav-logo">
+          <span class="logo-icon">🌙</span>
+          <span class="logo-text">Morpheus</span>
+        </a>
+      </div>
       <div class="nav-right">
         <span class="nav-date" id="nav-date"></span>
       </div>
@@ -43,42 +44,38 @@
 
     <!-- ─── Sidebar ─────────────────────────────────────────── -->
     <aside class="sidebar" id="sidebar">
-      <!-- Schedule Blocks -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-heading">
-          <span class="sidebar-icon">📅</span> Schedule
-        </h3>
-        <ul class="sidebar-list">
-          {% for block in schedule_blocks %}
-          <li>
-            <a href="/log/schedule/{{ block.id }}"
-               class="sidebar-item {% if active_type == 'schedule' and active_id == block.id %}active{% endif %}"
-               id="sidebar-schedule-{{ block.id }}">
-              <span class="sidebar-item-name">{{ block.name }}</span>
-              <span class="sidebar-item-time">{{ block.start_time }} – {{ block.end_time }}</span>
-            </a>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-
-      <!-- Rules -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-heading">
-          <span class="sidebar-icon">✅</span> Rules
-        </h3>
-        <ul class="sidebar-list">
-          {% for rule in rules %}
-          <li>
-            <a href="/log/rule/{{ rule.id }}"
-               class="sidebar-item {% if active_type == 'rule' and active_id == rule.id %}active{% endif %}"
-               id="sidebar-rule-{{ rule.id }}">
-              <span class="sidebar-item-name">{{ rule.name }}</span>
-            </a>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
+      <ul class="sidebar-menu">
+        <li>
+          <a href="/" class="sidebar-link {% if active_page == 'home' %}active{% endif %}" id="menu-home">
+            <span class="menu-icon">🏠</span>
+            <span class="menu-text">Home</span>
+          </a>
+        </li>
+        <li>
+          <a href="/schedule" class="sidebar-link {% if active_page == 'schedule' %}active{% endif %}" id="menu-schedule">
+            <span class="menu-icon">📅</span>
+            <span class="menu-text">Schedule</span>
+          </a>
+        </li>
+        <li>
+          <a href="/rules" class="sidebar-link {% if active_page == 'rules' %}active{% endif %}" id="menu-rules">
+            <span class="menu-icon">✅</span>
+            <span class="menu-text">Rules</span>
+          </a>
+        </li>
+        <li>
+          <a href="/statistics" class="sidebar-link {% if active_page == 'statistics' %}active{% endif %}" id="menu-statistics">
+            <span class="menu-icon">📈</span>
+            <span class="menu-text">Statistics</span>
+          </a>
+        </li>
+        <li>
+          <a href="/review/daily" class="sidebar-link {% if active_page == 'reviews' %}active{% endif %}" id="menu-reviews">
+            <span class="menu-icon">📊</span>
+            <span class="menu-text">Reviews</span>
+          </a>
+        </li>
+      </ul>
     </aside>
 
     <!-- ─── Main Content ──────────────────────────────────────── -->
@@ -92,12 +89,28 @@
     <p>&copy; 2026 Morpheus &middot; Personal Life Tracking</p>
   </footer>
 
-  <!-- Inline script: display current date in nav -->
+  <!-- Sidebar Collapse & Persistence Script -->
   <script>
+    // Set current date in navbar
     document.getElementById('nav-date').textContent =
       new Date().toLocaleDateString('en-IN', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
+
+    // Handle Collapsible Sidebar
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
+
+    // Retrieve previous state
+    const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+    if (isCollapsed) {
+      sidebar.classList.add('collapsed');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+    });
   </script>
 </body>
 </html>

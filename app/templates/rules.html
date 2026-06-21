@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Morpheus — Rules{% endblock %}
+
+{% block content %}
+<div class="rules-page-container">
+  <h1 class="page-title">Active Rules</h1>
+  <p class="page-subtitle">Guidelines you are tracking compliance against.</p>
+  
+  <div class="rules-grid">
+    {% for rule in rules %}
+    <div class="rule-details-card">
+      <div class="rule-details-header">
+        <span class="rule-details-icon">🛡️</span>
+        <h3 class="rule-details-name">{{ rule.name }}</h3>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

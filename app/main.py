@@ -22,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from app.config import get_settings
 from app.database import init_db, seed_defaults
 from app.database.engine import SessionLocal
-from app.routes import health, pages
+from app.routes import health, pages, reviews
 
 # Ensure all ORM models are imported so Base.metadata knows about them
 import app.models  # noqa: F401
@@ -98,3 +98,4 @@ app.mount(
 
 app.include_router(health.router)
 app.include_router(pages.router)
+app.include_router(reviews.router)

@@ -1,0 +1,180 @@
+<!--
+  review_weekly.html — Weekly review page.
+  Shows aggregated schedule block + rule counts for a 7-day period.
+-->
+{% extends "base.html" %}
+
+{% set active_type = "review" %}
+{% set active_id = "weekly" %}
+
+{% block title %}Weekly Review — {{ week_start.strftime('%b %d') }} to {{ week_end.strftime('%b %d, %Y') }}{% endblock %}
+
+{% block content %}
+<div class="review-page">
+
+  <!-- ─── Reviews Navigation Tabs ────────────────────────────── -->
+  <div class="reviews-navigation-tabs">
+    <a href="/review/daily" class="review-tab-btn {% if active_id == 'daily' %}active{% endif %}">Daily</a>
+    <a href="/review/weekly" class="review-tab-btn {% if active_id == 'weekly' %}active{% endif %}">Weekly</a>
+    <a href="/review/monthly" class="review-tab-btn {% if active_id == 'monthly' %}active{% endif %}">Monthly</a>
+  </div>
+
+  <!-- ─── Week Navigation ─────────────────────────────────────── -->
+  <div class="review-header">
+
+    <div class="review-header-top">
+      <span class="log-type-badge log-type-badge--review">📊 Weekly Review</span>
+    </div>
+    <h1 class="page-title">Weekly Review</h1>
+
+    <div class="week-nav">
+      <a href="/review/weekly?start={{ prev_week }}" class="week-nav-btn" id="btn-prev-week">
+        ← Previous Week
+      </a>
+      <span class="week-nav-label">
+        {{ week_start.strftime('%b %d') }} – {{ week_end.strftime('%b %d, %Y') }}
+      </span>
+      <a href="/review/weekly?start={{ next_week }}" class="week-nav-btn" id="btn-next-week">
+        Next Week →
+      </a>
+    </div>
+  </div>
+
+  <!-- ─── Overall Statistics ──────────────────────────────────── -->
+  <section class="review-stats-section">
+    <h2 class="section-title">Week Totals</h2>
+    <div class="review-stats-grid">
+      <!-- Schedule stats -->
+      <div class="review-stat-group">
+        <h3 class="review-stat-group-title">📅 Schedule</h3>
+        <div class="review-stat-items">
+          <div class="review-stat-item">
+            <span class="review-stat-value">{{ review.schedule_stats.total_logged }}</span>
+            <span class="review-stat-label">Total Logged</span>
+          </div>
+          <div class="review-stat-item review-stat-item--completed">
+            <span class="review-stat-value">{{ review.schedule_stats.completed }}</span>
+            <span class="review-stat-label">Completed</span>
+          </div>
+          <div class="review-stat-item review-stat-item--partial">
+            <span class="review-stat-value">{{ review.schedule_stats.partial }}</span>
+            <span class="review-stat-label">Partial</span>
+          </div>
+          <div class="review-stat-item review-stat-item--missed">
+            <span class="review-stat-value">{{ review.schedule_stats.missed }}</span>
+            <span class="review-stat-label">Missed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rule stats -->
+      <div class="review-stat-group">
+        <h3 class="review-stat-group-title">✅ Rules</h3>
+        <div class="review-stat-items">
+          <div class="review-stat-item">
+            <span class="review-stat-value">{{ review.rule_stats.total_logged }}</span>
+            <span class="review-stat-label">Total Logged</span>
+          </div>
+          <div class="review-stat-item review-stat-item--completed">
+            <span class="review-stat-value">{{ review.rule_stats.followed }}</span>
+            <span class="review-stat-label">Followed</span>
+          </div>
+          <div class="review-stat-item review-stat-item--missed">
+            <span class="review-stat-value">{{ review.rule_stats.violated }}</span>
+            <span class="review-stat-label">Violated</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Schedule Block Breakdown ────────────────────────────── -->
+  <section class="review-section">
+    <h2 class="section-title">Schedule Blocks</h2>
+    <div class="review-table-wrap">
+      <table class="review-table" id="schedule-weekly-table">
+        <thead>
+          <tr>
+            <th class="review-table-name">Block</th>
+            <th class="review-table-num">✅ Completed</th>
+            <th class="review-table-num">⚡ Partial</th>
+            <th class="review-table-num">❌ Missed</th>
+            <th class="review-table-num">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sr in review.schedule_reviews %}
+          <tr class="{% if sr.total_logged == 0 %}review-table-row--empty{% endif %}">
+            <td>
+              <span class="review-table-block-name">{{ sr.block.name }}</span>
+              <span class="review-table-block-time">{{ sr.block.start_time }} – {{ sr.block.end_time }}</span>
+            </td>
+            <td class="review-table-num">
+              {% if sr.completed_count > 0 %}
+              <span class="count-pill count-pill--completed">{{ sr.completed_count }}</span>
+              {% else %}–{% endif %}
+            </td>
+            <td class="review-table-num">
+              {% if sr.partial_count > 0 %}
+              <span class="count-pill count-pill--partial">{{ sr.partial_count }}</span>
+              {% else %}–{% endif %}
+            </td>
+            <td class="review-table-num">
+              {% if sr.missed_count > 0 %}
+              <span class="count-pill count-pill--missed">{{ sr.missed_count }}</span>
+              {% else %}–{% endif %}
+            </td>
+            <td class="review-table-num">
+              <span class="count-total">{{ sr.total_logged }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── Rule Breakdown ──────────────────────────────────────── -->
+  <section class="review-section">
+    <h2 class="section-title">Rules</h2>
+    <div class="review-table-wrap">
+      <table class="review-table" id="rules-weekly-table">
+        <thead>
+          <tr>
+            <th class="review-table-name">Rule</th>
+            <th class="review-table-num">✅ Followed</th>
+            <th class="review-table-num">❌ Violated</th>
+            <th class="review-table-num">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rr in review.rule_reviews %}
+          <tr class="{% if rr.total_logged == 0 %}review-table-row--empty{% endif %}">
+            <td>
+              <span class="review-table-block-name">{{ rr.rule.name }}</span>
+            </td>
+            <td class="review-table-num">
+              {% if rr.followed_count > 0 %}
+              <span class="count-pill count-pill--completed">{{ rr.followed_count }}</span>
+              {% else %}–{% endif %}
+            </td>
+            <td class="review-table-num">
+              {% if rr.violated_count > 0 %}
+              <span class="count-pill count-pill--missed">{{ rr.violated_count }}</span>
+              {% else %}–{% endif %}
+            </td>
+            <td class="review-table-num">
+              <span class="count-total">{{ rr.total_logged }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── AI Summary ──────────────────────────────────────────── -->
+  {% include "_ai_summary.html" %}
+
+</div>
+{% endblock %}

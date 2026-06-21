@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     # -- Gemini API (placeholder for future integration) --------------------- #
     GEMINI_API_KEY: str = ""
 
+    # -- LLM & OpenRouter Settings ------------------------------------------- #
+    LLM_PROVIDER: str = "openrouter"  # "openrouter" | "gemini"
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "openai/gpt-oss-20b:free"
+
+
     # -- Pydantic-settings configuration ------------------------------------- #
     model_config = SettingsConfigDict(
         env_file=str(_PROJECT_ROOT / ".env"),

@@ -1,16 +1,12 @@
 """
-Server-rendered page routes (Jinja2 templates).
-
-These routes return full HTML pages.  They live separately from pure
-API routes so the codebase clearly distinguishes between data endpoints
-and rendered views.
+Server-rendered page routes (Jinja2 templates) for Morpheus.
 
 Endpoints:
-    GET  /                        → Dashboard homepage
-    GET  /log/schedule/{id}       → Schedule block logging form
-    POST /log/schedule/{id}       → Submit schedule log
-    GET  /log/rule/{id}           → Rule logging form
-    POST /log/rule/{id}           → Submit rule log
+    GET  /             → Minimalist logging quick-capture page
+    POST /log          → Submit raw natural language log, run classifier, store entries
+    GET  /schedule     → Read-only schedule blocks list
+    GET  /rules        → Read-only compliance rules list
+    GET  /statistics   → Statistics & recent logging dashboard
 """
 
 from datetime import date
@@ -21,9 +17,6 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.models.schedule_block import ScheduleBlock
-from app.models.rule import Rule
-from app.schemas.log_entry import LogEntryCreate
 from app.services import schedule_service, rule_service, log_service
 
 router = APIRouter(tags=["Pages"])
@@ -37,11 +30,11 @@ _settings = get_settings()
 
 def _base_context(request: Request, db: Session) -> dict:
     """
-    Build the context dict shared by every page: sidebar schedule blocks,
-    rules, and app metadata.
+    Build the context dict shared by every page: sidebar navigation links,
+    collapsible sidebar state, and app metadata.
     """
     return {
-        "request": request,  # needed for url_for etc.
+        "request": request,
         "app_name": _settings.APP_NAME,
         "app_version": _settings.APP_VERSION,
         "schedule_blocks": schedule_service.get_all_blocks(db),
@@ -50,7 +43,7 @@ def _base_context(request: Request, db: Session) -> dict:
 
 
 def _render(request: Request, template: str, context: dict) -> HTMLResponse:
-    """Shorthand for TemplateResponse with request kwarg."""
+    """Shorthand for TemplateResponse with request context."""
     return request.app.state.templates.TemplateResponse(
         request=request,
         name=template,
@@ -59,142 +52,116 @@ def _render(request: Request, template: str, context: dict) -> HTMLResponse:
 
 
 # --------------------------------------------------------------------------- #
-#  GET /  — Dashboard homepage                                                 #
+#  GET /  — Minimalist Logging Homepage                                        #
 # --------------------------------------------------------------------------- #
 
-@router.get("/", response_class=HTMLResponse, summary="Dashboard")
+@router.get("/", response_class=HTMLResponse, summary="Home Quick Capture")
 def homepage(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
-    """
-    Render the Morpheus dashboard with today's progress stats and
-    recent log entries.
-    """
-    today = date.today()
+    """Render the simple text capture box for daily logging."""
     ctx = _base_context(request, db)
     ctx.update({
-        "today": today,
-        "schedule_count": log_service.count_entries_for_date(db, today, "schedule"),
-        "rule_count": log_service.count_entries_for_date(db, today, "rule"),
-        "total_blocks": len(ctx["schedule_blocks"]),
-        "total_rules": len(ctx["rules"]),
-        "recent_entries": log_service.get_recent_entries(db, limit=15),
-        # Build lookup dicts so templates can resolve reference_id → name
-        "block_map": {b.id: b for b in ctx["schedule_blocks"]},
-        "rule_map": {r.id: r for r in ctx["rules"]},
+        "today": date.today(),
+        "active_page": "home",
     })
     return _render(request, "index.html", ctx)
 
 
 # --------------------------------------------------------------------------- #
-#  GET / POST  /log/schedule/{block_id}  — Schedule logging form               #
+#  POST /log — Submit raw log & execute classification pipeline                #
 # --------------------------------------------------------------------------- #
 
-@router.get("/log/schedule/{block_id}", response_class=HTMLResponse,
-            summary="Schedule log form")
-def schedule_log_form(
-    request: Request,
-    block_id: int,
+@router.post("/log", summary="Submit raw text log")
+def submit_raw_log(
+    content: str = Form(...),
     db: Session = Depends(get_db),
-) -> HTMLResponse:
-    """Show the logging form for a specific schedule block."""
-    block = schedule_service.get_block_by_id(db, block_id)
-    if not block:
-        return RedirectResponse(url="/", status_code=303)
+) -> RedirectResponse:
+    """
+    Process raw text log:
+      1. Store raw log in DB.
+      2. Classify raw log using Local LLM (Llama).
+      3. Create structured LogEntry & Activity rows.
+      4. Redirect back to Home.
+    """
+    today = date.today()
+    content_str = content.strip()
+    
+    if content_str:
+        # 1. Store raw log
+        raw_log = log_service.create_raw_log(db, content=content_str, entry_date=today)
+        
+        # 2. Run Llama classifier
+        from app.services.classification_service import get_classification_service
+        classifier = get_classification_service()
+        
+        classified_items = classifier.classify(content_str, db)
+        
+        # 3. Store structured entries and activities
+        for item in classified_items:
+            ref_id = log_service.resolve_reference_id(db, item.entry_type, item.reference_name)
+            if ref_id is not None:
+                # Merge activities into content note for backwards compatibility
+                notes = ", ".join(item.activities) if item.activities else None
+                log_entry = log_service.create_structured_entry(
+                    db,
+                    entry_type=item.entry_type,
+                    reference_id=ref_id,
+                    status=item.status,
+                    content=notes,
+                    entry_date=today,
+                    raw_log_id=raw_log.id,
+                )
+                
+                # Store granular parsed activities
+                for act_name in item.activities:
+                    log_service.create_activity(db, log_entry_id=log_entry.id, name=act_name)
 
-    ctx = _base_context(request, db)
-    ctx.update({
-        "block": block,
-        "today": date.today(),
-        "saved": False,
-    })
-    return _render(request, "log_schedule.html", ctx)
-
-
-@router.post("/log/schedule/{block_id}", response_class=HTMLResponse,
-             summary="Submit schedule log")
-def schedule_log_submit(
-    request: Request,
-    block_id: int,
-    status: str = Form(...),
-    content: str = Form(""),
-    entry_date: date = Form(...),
-    db: Session = Depends(get_db),
-) -> HTMLResponse:
-    """Process the schedule logging form submission."""
-    block = schedule_service.get_block_by_id(db, block_id)
-    if not block:
-        return RedirectResponse(url="/", status_code=303)
-
-    payload = LogEntryCreate(
-        entry_type="schedule",
-        reference_id=block_id,
-        status=status,
-        content=content if content.strip() else None,
-        entry_date=entry_date,
-    )
-    log_service.create_log_entry(db, payload)
-
-    ctx = _base_context(request, db)
-    ctx.update({
-        "block": block,
-        "today": date.today(),
-        "saved": True,
-    })
-    return _render(request, "log_schedule.html", ctx)
+    return RedirectResponse(url="/", status_code=303)
 
 
 # --------------------------------------------------------------------------- #
-#  GET / POST  /log/rule/{rule_id}  — Rule logging form                        #
+#  GET /schedule — Read-only schedule list                                     #
 # --------------------------------------------------------------------------- #
 
-@router.get("/log/rule/{rule_id}", response_class=HTMLResponse,
-            summary="Rule log form")
-def rule_log_form(
-    request: Request,
-    rule_id: int,
-    db: Session = Depends(get_db),
-) -> HTMLResponse:
-    """Show the logging form for a specific rule."""
-    rule = rule_service.get_rule_by_id(db, rule_id)
-    if not rule:
-        return RedirectResponse(url="/", status_code=303)
-
+@router.get("/schedule", response_class=HTMLResponse, summary="Schedule blocks")
+def schedule_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    """Show the list of configured daily schedule blocks."""
     ctx = _base_context(request, db)
     ctx.update({
-        "rule": rule,
-        "today": date.today(),
-        "saved": False,
+        "active_page": "schedule",
     })
-    return _render(request, "log_rule.html", ctx)
+    return _render(request, "schedule.html", ctx)
 
 
-@router.post("/log/rule/{rule_id}", response_class=HTMLResponse,
-             summary="Submit rule log")
-def rule_log_submit(
-    request: Request,
-    rule_id: int,
-    status: str = Form(...),
-    content: str = Form(""),
-    entry_date: date = Form(...),
-    db: Session = Depends(get_db),
-) -> HTMLResponse:
-    """Process the rule logging form submission."""
-    rule = rule_service.get_rule_by_id(db, rule_id)
-    if not rule:
-        return RedirectResponse(url="/", status_code=303)
+# --------------------------------------------------------------------------- #
+#  GET /rules — Read-only rules list                                           #
+# --------------------------------------------------------------------------- #
 
-    payload = LogEntryCreate(
-        entry_type="rule",
-        reference_id=rule_id,
-        status=status,
-        content=content if content.strip() else None,
-        entry_date=entry_date,
-    )
-    log_service.create_log_entry(db, payload)
-
+@router.get("/rules", response_class=HTMLResponse, summary="Rules list")
+def rules_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    """Show the list of active compliance rules."""
     ctx = _base_context(request, db)
     ctx.update({
-        "rule": rule,
-        "today": date.today(),
-        "saved": True,
+        "active_page": "rules",
     })
-    return _render(request, "log_rule.html", ctx)
+    return _render(request, "rules.html", ctx)
+
+
+# --------------------------------------------------------------------------- #
+#  GET /statistics — Metrics & Recent Logs Dashboard                           #
+# --------------------------------------------------------------------------- #
+
+@router.get("/statistics", response_class=HTMLResponse, summary="Statistics dashboard")
+def statistics_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    """Show overall logging compliance statistics and timeline."""
+    from app.services.statistics_service import get_statistics
+    
+    stats = get_statistics(db)
+    ctx = _base_context(request, db)
+    ctx.update({
+        "active_page": "statistics",
+        "stats": stats,
+        # Maps for resolving names in template lists
+        "block_map": {b.id: b for b in ctx["schedule_blocks"]},
+        "rule_map": {r.id: r for r in ctx["rules"]},
+    })
+    return _render(request, "statistics.html", ctx)

@@ -21,3 +21,7 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Hugging Face models
+local_models/
+

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Morpheus — Schedule Blocks{% endblock %}
+
+{% block content %}
+<div class="schedule-page-container">
+  <h1 class="page-title">Daily Schedule Blocks</h1>
+  <p class="page-subtitle">Your target schedule framework.</p>
+  
+  <div class="blocks-grid">
+    {% for block in schedule_blocks %}
+    <div class="block-details-card">
+      <div class="block-details-header">
+        <span class="block-details-icon">📅</span>
+        <h3 class="block-details-name">{{ block.name }}</h3>
+      </div>
+      <div class="block-details-time">
+        <span>{{ block.start_time }} – {{ block.end_time }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

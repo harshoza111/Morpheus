@@ -1,0 +1,96 @@
+<!--
+  _ai_summary.html — Shared Jinja2 partial for AI review analysis.
+
+  Included by review_daily.html, review_weekly.html, review_monthly.html.
+
+  Expects `ai_summary` in template context:
+    - Dict with: overall_assessment, successes, missed_opportunities, patterns, recommendations
+    - Or None if AI is unavailable
+-->
+
+{% if ai_summary %}
+<section class="ai-summary-section" id="ai-summary">
+  <div class="ai-summary-header">
+    <h2 class="section-title">🤖 Morpheus Analysis</h2>
+    <span class="ai-summary-badge">AI Generated</span>
+  </div>
+
+  <!-- Overall Assessment -->
+  <div class="ai-summary-assessment">
+    <p>{{ ai_summary.overall_assessment }}</p>
+  </div>
+
+  <!-- Analysis Grid -->
+  <div class="ai-summary-grid">
+
+    <!-- Successes -->
+    {% if ai_summary.successes %}
+    <div class="ai-summary-card ai-summary-card--success">
+      <div class="ai-summary-card-header">
+        <span class="ai-summary-card-icon">🎯</span>
+        <h3 class="ai-summary-card-title">Successes</h3>
+      </div>
+      <ul class="ai-summary-list">
+        {% for item in ai_summary.successes %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Missed Opportunities -->
+    {% if ai_summary.missed_opportunities %}
+    <div class="ai-summary-card ai-summary-card--missed">
+      <div class="ai-summary-card-header">
+        <span class="ai-summary-card-icon">⚠️</span>
+        <h3 class="ai-summary-card-title">Missed Opportunities</h3>
+      </div>
+      <ul class="ai-summary-list">
+        {% for item in ai_summary.missed_opportunities %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Patterns -->
+    {% if ai_summary.patterns %}
+    <div class="ai-summary-card ai-summary-card--pattern">
+      <div class="ai-summary-card-header">
+        <span class="ai-summary-card-icon">📈</span>
+        <h3 class="ai-summary-card-title">Patterns</h3>
+      </div>
+      <ul class="ai-summary-list">
+        {% for item in ai_summary.patterns %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Recommendations -->
+    {% if ai_summary.recommendations %}
+    <div class="ai-summary-card ai-summary-card--recommend">
+      <div class="ai-summary-card-header">
+        <span class="ai-summary-card-icon">💡</span>
+        <h3 class="ai-summary-card-title">Recommendations</h3>
+      </div>
+      <ul class="ai-summary-list">
+        {% for item in ai_summary.recommendations %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+{% else %}
+<section class="ai-summary-section ai-summary-section--unavailable" id="ai-summary">
+  <div class="ai-summary-header">
+    <h2 class="section-title">🤖 Morpheus Analysis</h2>
+  </div>
+  <p class="ai-summary-unavailable-text">AI summary unavailable.</p>
+</section>
+{% endif %}
